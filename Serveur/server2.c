@@ -173,7 +173,7 @@ static void app(void)
 
                      int temp = clients[k] -> numberOfConv;
                      for(int j = 0; j < temp; ++j) {
-                        printf("\t\t * Nom : %s\n", client -> group_conv[j] -> name);
+                        printf("\t\t * Nom : %s\n", clients[k] -> group_conv[j] -> name);
                      }
 
                   }
@@ -193,7 +193,7 @@ static void app(void)
                      if(!strcmp(client -> group_conv[k] -> name,buffer)) 
                      {
                         // send_message_to_client(clients[i],);
-                        strncpy(buffer, "L'utilisateur existe", BUF_SIZE - 1);
+                        strncpy(buffer, "La conversation existe", BUF_SIZE - 1);
                         send_message_to_client(client, buffer, 1);
                         
                         conv = client -> group_conv[k];
@@ -240,16 +240,21 @@ static void app(void)
       }
    }
 
-   clear_clients(clients, actual);
+   clear_clients(clients, all_group_conv, actual, actualConv);
    end_connection(sock);
 }
 
-static void clear_clients(Client **clients, int actual)
+static void clear_clients(Client **clients, groupConv **conv, int actual, int actualConv)
 {
    int i = 0;
    for(i = 0; i < actual; i++)
    {
       closesocket(clients[i] -> sock);
+      free(clients[i]);
+   }
+
+   for(int i = 0; i < actualConv; ++i) {
+      free(conv[i]);
    }
 }
 
