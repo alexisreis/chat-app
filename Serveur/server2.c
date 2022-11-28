@@ -95,6 +95,7 @@ static void app(void)
          strncpy(c.name, buffer, BUF_SIZE - 1);
          clients[actual] = c;
          actual++;
+         printf("* [CON] %s connected to server\n", c.name);
       }
       else
       {
@@ -114,10 +115,12 @@ static void app(void)
                   strncpy(buffer, client.name, BUF_SIZE - 1);
                   strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
                   send_message_to_all_clients(clients, client, actual, buffer, 1);
+                  printf("* [DISCO] %s disconnected from server\n", client.name);
                }
                else
                {
                   send_message_to_all_clients(clients, client, actual, buffer, 0);
+                  printf("* [MESS] Message from %s : %s\n",client.name,buffer);
                }
                break;
             }
