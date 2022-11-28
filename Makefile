@@ -1,7 +1,10 @@
+CC=gcc
+BIN=./bin
+
 all : client server
 
-client: client.c
-	gcc -o client client.c
+client: ./Client/client2.c
+	$(CC) -o $(BIN)/$@ $<
 
-server: server.c
-	gcc -o server server.c
+server: ./Serveur/server2.c
+	$(CC) -o $(BIN)/$@ $<
