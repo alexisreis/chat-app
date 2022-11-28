@@ -30,6 +30,7 @@ typedef struct in_addr IN_ADDR;
 #define CRLF        "\r\n"
 #define PORT         1977
 #define MAX_CLIENTS     100
+#define MAX_GROUPS    100
 
 #define BUF_SIZE    1024
 
@@ -47,5 +48,6 @@ static void remove_client(Client **clients, int to_remove, int *actual);
 static void clear_clients(Client **clients, int actual);
 
 static void send_message_to_client(Client *receiver, const char *buffer, char from_server);
+static void add_client_to_conv(Client* client, groupConv* conv);
 
 #endif /* guard */

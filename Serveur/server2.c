@@ -36,6 +36,9 @@ static void app(void)
    /* an array for all clients */
    Client* clients[MAX_CLIENTS];
 
+   groupConv* all_group_conv[MAX_GROUPS];
+   int actualConv = 0;
+
    fd_set rdfs;
 
    while(1)
@@ -93,6 +96,7 @@ static void app(void)
 
          Client* c = malloc(sizeof(Client));
          c -> sock = csock;
+         c -> numberOfConv = 0;
          // Client c = { csock };
          strncpy(c -> name, buffer, BUF_SIZE - 1);
          clients[actual] = c;
@@ -135,6 +139,94 @@ static void app(void)
                         send_message_to_client(client, buffer, 1);
                         break;
                      }
+                  }
+               }
+               else if (!strcmp(buffer,"$create")) 
+               {
+                  strncpy(buffer, "Choisissez un un nom de conversation : ", BUF_SIZE - 1);
+                  send_message_to_client(client, buffer, 1);
+                  
+                  read_client(client -> sock, buffer);
+                  
+                  groupConv* newGroupConv = malloc(sizeof(groupConv));
+                  strcpy(newGroupConv -> name,buffer);
+                  newGroupConv -> clients[newGroupConv -> numberOfClients] = client;
+                  (newGroupConv -> numberOfClients) = 1;
+
+                  client -> group_conv[client -> numberOfConv] = newGroupConv;
+                  (client -> numberOfConv)++;
+
+                  all_group_conv[actualConv] = newGroupConv;
+                  actualConv++;
+               }
+               else if (!strcmp(buffer,"$debug")) 
+               {
+                  strncpy(buffer, "******************", BUF_SIZE - 1);
+                  send_message_to_client(client, buffer, 1);
+            
+                  printf("******************\n");
+                  for(int k = 0; k < actual; ++k) {
+                     printf("Client n°%d :\n", k);
+                     printf("\t * nom : %s\n", clients[k] -> name);
+                     printf("\t * socket : %d\n", clients[k] -> sock);
+                     printf("\t * Conversations : \n");
+
+                     int temp = clients[k] -> numberOfConv;
+                     for(int j = 0; j < temp; ++j) {
+                        printf("\t\t * Nom : %s\n", client -> group_conv[j] -> name);
+                     }
+
+                  }
+               }
+               else if (!strcmp(buffer,"$add")) 
+               {
+                  strncpy(buffer, "Choisissez une conversation de groupe : ", BUF_SIZE - 1);
+                  send_message_to_client(client, buffer, 1);
+                  
+                  read_client(client -> sock, buffer);
+                  int maxConv = client -> numberOfConv;
+
+                  groupConv* conv = NULL;
+                  for(int k = 0; k < maxConv; k++) 
+                  {
+                     // Le nom de la conv est le même que celui entré par le client
+                     if(!strcmp(client -> group_conv[k] -> name,buffer)) 
+                     {
+                        // send_message_to_client(clients[i],);
+                        strncpy(buffer, "L'utilisateur existe", BUF_SIZE - 1);
+                        send_message_to_client(client, buffer, 1);
+                        
+                        conv = client -> group_conv[k];
+                        break;
+                     }
+                  }
+
+                  if(conv != NULL) {
+
+                     strncpy(buffer, "Choisissez un pseudo à ajouter dans la conv : ", BUF_SIZE - 1);
+                     send_message_to_client(client, buffer, 1);
+                     
+                     read_client(client -> sock, buffer);
+                     for(int k = 0; k < actual; k++)
+                     {
+                        // Le pseudo est le même que celui entré par le client
+                        if(!strcmp(clients[k] -> name,buffer)) 
+                        {
+                           // send_message_to_client(clients[i],);
+                           strncpy(buffer, "L'utilisateur existe", BUF_SIZE - 1);
+                           send_message_to_client(client, buffer, 1);
+                           
+                           add_client_to_conv(clients[k],conv);
+
+                           strncpy(buffer, "Utilisateur ajouté dans la conv.", BUF_SIZE - 1);
+                           send_message_to_client(client, buffer, 1);
+                           break;
+                        }
+                     }
+                  }
+                  else {
+                     strncpy(buffer, "La conversation n'existe pas.", BUF_SIZE - 1);
+                     send_message_to_client(client, buffer, 1);
                   }
                }
                else
@@ -264,6 +356,15 @@ static void write_client(SOCKET sock, const char *buffer)
       perror("send()");
       exit(errno);
    }
+}
+
+static void add_client_to_conv(Client* client, groupConv* conv) 
+{
+   client -> group_conv[client -> numberOfConv] = conv;
+   (client -> numberOfConv)++;
+
+   conv -> clients[conv -> numberOfClients] = client;
+   (conv -> numberOfClients)++;
 }
 
 int main(int argc, char **argv)

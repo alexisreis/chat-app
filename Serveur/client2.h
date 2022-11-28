@@ -4,21 +4,26 @@
 #include "server2.h"
 
 struct groupConv;
-struct Client;
 
-typedef struct
+struct Client
 {
    SOCKET sock;
    char name[BUF_SIZE];
+
    struct groupConv* group_conv[10];
+   int numberOfConv;
    
-}Client;
+};
 
-typedef struct
+struct groupConv
 {
-   char conv_name[50];
-   Client* clients[10];
-}groupConv;
+   char name[50];
+   struct Client* clients[10];
 
+   int numberOfClients;
+};
+
+typedef struct Client Client;
+typedef struct groupConv groupConv;
 
 #endif /* guard */
