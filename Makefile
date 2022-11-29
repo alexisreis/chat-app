@@ -3,8 +3,8 @@ BIN=./bin
 
 all : client server
 
-client: ./Client/client2.c
+client: ./Client/Client.c
 	$(CC) -o $(BIN)/$@ $<
 
-server: ./Serveur/server2.c
+server: ./Server/Server.c
 	$(CC) -o $(BIN)/$@ $<

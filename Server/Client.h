@@ -1,18 +1,21 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include "server2.h"
+#define MAX_FRIENDS_COUNT 10
+#define MAX_GROUP_COUNT 10
+
+#include "Server.h"
 
 struct groupConv;
-
 struct Client
 {
    SOCKET sock;
    char name[BUF_SIZE];
 
-   struct groupConv* group_conv[10];
+   struct groupConv* group_conv[MAX_GROUP_COUNT];
    int numberOfConv;
-   
+   struct Client* friends[MAX_FRIENDS_COUNT];
+   int numberOfFriends;
 };
 
 struct groupConv
