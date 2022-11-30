@@ -215,7 +215,14 @@ static void app(void)
                   strcat(buffer,newGroupConv->name);
                   strcat(buffer,".his");
                   strcpy(newGroupConv -> pathToHistory,buffer);
-                  newGroupConv -> history = fopen(newGroupConv -> pathToHistory, "r+");
+                  newGroupConv -> history = malloc(sizeof(FILE));
+
+                  if(fopen(newGroupConv -> pathToHistory, "r+") == NULL) {
+                     newGroupConv -> history = fopen(newGroupConv -> pathToHistory, "w");
+                  }
+                  else {
+                     newGroupConv -> history = fopen(newGroupConv -> pathToHistory, "r+");
+                  }
                }
                else if (!strcmp(buffer, "$debug"))
                {
@@ -424,6 +431,7 @@ static void clear_clients(Client **clients, groupConv **conv, int actual, int ac
    for (int i = 0; i < actualConv; ++i)
    {
       fclose(conv[i] -> history);
+      free(conv[i] -> history);
       free(conv[i]);
    }
 }
@@ -494,6 +502,9 @@ static void send_message_to_clients_in_conv(groupConv* conv, Client* sender, con
          }
       }
    }
+
+   /* Gestion dans l'historique */
+   fprintf(conv -> history,"%s",message);
 }
 
 static int init_connection(void)
