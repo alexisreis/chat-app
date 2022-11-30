@@ -258,9 +258,11 @@ static void app(void)
             strncpy(buffer, "Pseudo déjà utilisé", BUF_SIZE - 1);
             send_message_to_client(c, buffer, 1);
             // free(c);
+            // TODO : bloquer
          }
 
          printf("* [CON] %s just connected to server\n", c->name);
+         c->status = CONNECTED;
       }
       else
       {
