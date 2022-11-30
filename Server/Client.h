@@ -4,6 +4,7 @@
 #define MAX_FRIENDS_COUNT 10
 #define MAX_GROUP_COUNT 10
 
+#include <stdio.h>
 #include "Server.h"
 
 struct groupConv;
@@ -14,6 +15,9 @@ struct Client
 
    struct groupConv* group_conv[MAX_GROUP_COUNT];
    int numberOfConv;
+
+   struct groupConv* actualConv;
+
    struct Client* friends[MAX_FRIENDS_COUNT];
    int numberOfFriends;
 };
@@ -24,6 +28,9 @@ struct groupConv
    struct Client* clients[10];
 
    int numberOfClients;
+
+   char pathToHistory[100];
+   FILE* history;
 };
 
 typedef struct Client Client;
