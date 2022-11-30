@@ -4,6 +4,9 @@
 #define MAX_FRIENDS_COUNT 10
 #define MAX_GROUP_COUNT 10
 
+#define CONNECTED 1
+#define DISCONNECTED 0
+
 #include <stdio.h>
 #include "Server.h"
 
@@ -12,6 +15,8 @@ struct Client
 {
    SOCKET sock;
    char name[BUF_SIZE];
+
+   int status;
 
    struct groupConv* group_conv[MAX_GROUP_COUNT];
    int numberOfConv;
