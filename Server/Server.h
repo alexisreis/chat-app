@@ -34,7 +34,32 @@ typedef struct in_addr IN_ADDR;
 
 #define BUF_SIZE    1024
 
+
+
 #include "Client.h"
+
+typedef struct
+{
+    char *pseudo;
+    // int status;
+    Client *client;
+} ClientItem;
+
+typedef struct
+{
+    ClientItem **clients;
+    int size;
+    int count;
+} HashTable;
+
+unsigned long hash_function(char *pseudo, int size);
+ClientItem *create_client(char *pseudo, Client *client);
+HashTable *create_table(int size);
+void free_item(ClientItem *item);
+void free_table(HashTable *table);
+int ht_insert(HashTable *clientsTable, char *pseudo, Client *client);
+Client * ht_search (HashTable* clientsTable, char* pseudo);
+
 
 static void init(void);
 static void end(void);

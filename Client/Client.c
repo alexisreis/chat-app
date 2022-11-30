@@ -12,7 +12,7 @@ static void init(void)
    int err = WSAStartup(MAKEWORD(2, 2), &wsa);
    if(err < 0)
    {
-      puts("WSAStartup failed !");
+      puts("WSAStartup failed.. !");
       exit(EXIT_FAILURE);
    }
 #endif

@@ -26,6 +26,99 @@ static void end(void)
 #endif
 }
 
+unsigned long hash_function(char *pseudo, int size)
+{
+    unsigned long i = 0;
+    for (int j = 0; pseudo[j]; j++)
+        i += pseudo[j];
+
+    return i % size;
+}
+
+ClientItem *create_client(char *pseudo, Client *client)
+{
+    ClientItem *item = (ClientItem *)malloc(sizeof(ClientItem));
+    item->pseudo = (char *)malloc(strlen(pseudo) + 1);
+    strcpy(item->pseudo, pseudo);
+
+    item->client = client;
+
+    return item;
+}
+
+HashTable *create_table(int size)
+{
+    HashTable *clientsTable = (HashTable *)malloc(sizeof(HashTable));
+    clientsTable->size = size;
+    clientsTable->count = 0;
+    clientsTable->clients = (ClientItem **)calloc(clientsTable->size, sizeof(ClientItem *));
+
+    for (int i = 0; i < clientsTable->size; i++)
+    {
+        clientsTable->clients[i] = NULL;
+    }
+
+    return clientsTable;
+}
+
+void free_item(ClientItem *item)
+{
+    free(item->pseudo);
+    free(item->client);
+    free(item);
+}
+
+void free_table(HashTable *table)
+{
+    for (int i = 0; i < table->size; i++)
+    {
+        ClientItem *item = table->clients[i];
+        if (item != NULL)
+            free_item(item);
+    }
+    free(table->clients);
+    free(table);
+}
+
+int ht_insert(HashTable *clientsTable, char *pseudo, Client *client)
+{
+    ClientItem *newItem = create_client(pseudo, client);
+
+    int index = hash_function(pseudo, clientsTable->size);
+    ClientItem *currentItem = clientsTable->clients[index];
+
+    if (currentItem == NULL)
+    {
+        if (clientsTable->count == clientsTable->size)
+        {
+            printf("Maximum amount of clients");
+            free(newItem);
+            return -1;
+        }
+        clientsTable -> clients[index] = newItem;
+        clientsTable -> count++;
+        return 0;
+    } else {
+        printf("Client already exists");
+        free(newItem);
+        return 1;
+    }
+}
+
+Client * ht_search (HashTable* clientsTable, char* pseudo)
+{
+    int index = hash_function(pseudo, clientsTable -> size);
+    ClientItem* item = clientsTable -> clients[index];
+
+    if(item != NULL)
+    {
+        if(strcmp(item->pseudo, pseudo) == 0)
+            return item -> client;
+    }
+
+    return NULL;
+}
+
 /**
  * @brief Creates a new empty client
  *
@@ -94,6 +187,8 @@ static void app(void)
 
    fd_set rdfs;
 
+   HashTable *clientsTable = create_table(MAX_CLIENTS);
+
    while (1)
    {
       int i = 0;
@@ -157,7 +252,15 @@ static void app(void)
 
          clients[actual] = c;
          actual++;
-         printf("* [CON] %s connected to server\n", c->name);
+
+         if(ht_insert(clientsTable, buffer, c))
+         {
+            strncpy(buffer, "Pseudo déjà utilisé", BUF_SIZE - 1);
+            send_message_to_client(c, buffer, 1);
+            // free(c);
+         }
+
+         printf("* [CON] %s just connected to server\n", c->name);
       }
       else
       {
