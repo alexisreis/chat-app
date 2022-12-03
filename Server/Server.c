@@ -2,10 +2,15 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "Server.h"
 #include "Client.h"
 
+static int actual = 0;
+static int actualConv = 0;
+static Client *clients[MAX_CLIENTS];
+static groupConv *all_group_conv[MAX_GROUPS];
 
 static void init(void)
 {
@@ -18,6 +23,43 @@ static void init(void)
       exit(EXIT_FAILURE);
    }
 #endif
+}
+
+static void save_clients(void)
+{
+   FILE *file = fopen("history/clients.txt", "w+");
+   if (file)
+   {
+      for (int i = 0; i < actual; ++i)
+      {
+         fprintf(file, "%s\n", clients[i]->name);
+      }
+   }
+   fclose(file);
+}
+
+static void save_groups(void)
+{
+   FILE *file = fopen("history/groups.txt", "w+");
+   if (file)
+   {
+      for (int i = 0; i < actualConv; ++i)
+      {
+         fprintf(file, "%s\n", all_group_conv[i]->name);
+         for (int j = 0; j < all_group_conv[i]->numberOfClients; ++j)
+         {
+            fprintf(file, "%s\n", all_group_conv[i]->clients[j]->name);
+         }
+         fprintf(file, "$\n");
+      }
+   }
+   fclose(file);
+}
+
+static void save(void)
+{
+   save_clients();
+   save_groups();
 }
 
 static void end(void)
@@ -34,20 +76,168 @@ static void end(void)
  * @param name client name
  * @return Client*
  */
-Client *newClient(int csock, char *name)
+Client *newClient(int csock, char *name, int status)
 {
    Client *c;
    c = (Client *)malloc(sizeof(Client));
    c->sock = csock;
 
+   c->status = status;
+
    c->numberOfConv = 0;
    c->numberOfFriends = 0;
 
-   c -> actualConv = NULL;
+   c->actualConv = NULL;
 
    strncpy(c->name, name, BUF_SIZE - 1);
 
    return c;
+}
+
+void add_client(Client **clients, int csock, char *name, int status)
+{
+   Client *c = newClient(csock, name, status);
+   clients[actual] = c;
+   actual++;
+}
+
+void load_clients(Client **clients)
+{
+   printf("Loading clients...\n");
+   FILE *file = fopen("history/clients.txt", "r");
+
+   char file_contents[BUF_SIZE];
+
+   if (file)
+   {
+      while (fscanf(file, "%s\n", file_contents) != EOF)
+      {
+         add_client(clients, NULL, file_contents, DISCONNECTED);
+      }
+      fclose(file);
+      printf("Clients loaded\n");
+   } else {
+      printf("[INFO] No client save found\n");
+   }
+
+
+}
+
+void load_groups(groupConv **all_conv, Client **clients)
+{
+   printf("Loading groups...\n");
+   FILE *file = fopen("history/groups.txt", "r");
+   char line[BUF_SIZE];
+
+   if (file)
+   {
+      while (fscanf(file, "%99[^\n]\n", line) != EOF)
+      {
+         /* Create a groupconv struct */
+         groupConv *newGroupConv = malloc(sizeof(groupConv));
+         strcpy(newGroupConv->name, line);
+         printf("\t* %s\n", newGroupConv->name);
+
+         /* Add it to all_conv */
+         all_conv[actualConv] = newGroupConv;
+         actualConv++;
+         (newGroupConv->numberOfClients) = 0;
+
+         /* Fetch member list file */
+         char member_path[150] = "";
+         strcat(member_path, "history/group/");
+         strcat(member_path, line);
+         strcat(member_path, ".mbr");
+
+         FILE *member_file = fopen(member_path, "r");
+         if (member_file)
+         {
+            printf("File exists\n");
+            while (fscanf(member_file, "%99[^\n]\n", line) != EOF)
+            {
+               /* Checks if client exist and gets it*/
+               Client *c = NULL;
+               for (int i = 0; i < actual; ++i)
+               {
+                  if (!strcmp(clients[i]->name, line))
+                  {
+                     c = clients[i];
+                     newGroupConv->clients[newGroupConv->numberOfClients] = c;
+                     (newGroupConv->numberOfClients)++;
+
+                     c->group_conv[c->numberOfConv] = newGroupConv;
+                     (c->numberOfConv)++;
+
+                     printf("\t\t* %s\n", c->name);
+                     break;
+                  }
+               }
+            }
+            fclose(member_file);
+         }
+         else
+         {
+            printf("[INFO] No member list found for this group\n");
+         }
+      }
+      fclose(file);
+      printf("Groups loaded\n");
+   } else {
+      printf("[INFO] No group save found\n");
+   }
+}
+
+void load_friends(Client **clients)
+{
+   printf("Loading friends...\n");
+   FILE *file = fopen("history/friends.txt", "r");
+   char client_name[BUF_SIZE];
+   char friend_name[BUF_SIZE];
+
+   if (file)
+   {
+      while (fscanf(file, "%99s -> %99s\n", client_name, friend_name) != EOF)
+      {
+         Client *client = NULL;
+         Client *friend = NULL;
+
+         int clientFound = 0;
+         int friendFound = 0;
+
+         for (int i = 0; i < actual; ++i)
+         {
+            if (!clientFound && strcmp(clients[i]->name, client_name) == 0)
+            {
+               clientFound = 1;
+               client = clients[i];
+            }
+            else if (!friendFound && strcmp(clients[i]->name, friend_name) == 0)
+            {
+               friendFound = 1;
+               friend = clients[i];
+            }
+            else if (clientFound && friendFound)
+               break;
+         }
+
+         // printf("client : %s friend : %s\n", client->name, friend->name);
+
+         if (clientFound && friendFound)
+         {
+            client->friends[client->numberOfFriends] = friend;
+            (client->numberOfFriends)++;
+
+            friend->friends[friend->numberOfFriends] = client;
+            (friend->numberOfFriends)++;
+
+            printf("\t* %s -> %s\n", client_name, friend_name);
+         }
+      }
+         fclose(file);
+         printf("Friends loaded\n");
+   } else {
+      printf("[INFO] No friends save found\n");
+   }
 }
 
 /**
@@ -58,11 +248,27 @@ Client *newClient(int csock, char *name)
  */
 void add_friend(Client *client, Client *friend)
 {
+   /* Check if they are not already friends */
+   int numberOfFriends = client->numberOfFriends;
+   for (int i = 0; i < numberOfFriends; ++i)
+   {
+      if (strcmp(client->friends[i]->name, friend->name) == 0)
+         return;
+   }
+
    client->friends[client->numberOfFriends] = friend;
    (client->numberOfFriends)++;
 
    friend->friends[friend->numberOfFriends] = client;
    (friend->numberOfFriends)++;
+
+   FILE *file = fopen("history/friends.txt", "a");
+   if (file)
+   {
+      fprintf(file, "%s -> %s\n", client->name, friend->name);
+      fclose(file);
+   }
+
 }
 
 static void app(void)
@@ -70,14 +276,16 @@ static void app(void)
    SOCKET sock = init_connection();
    char buffer[BUF_SIZE];
    /* the index for the array */
-   int actual = 0;
+
    int max = sock;
    /* an array for all clients */
-   Client *clients[MAX_CLIENTS];
+
+   load_clients(clients);
 
    /* an array for all group conversations*/
-   groupConv *all_group_conv[MAX_GROUPS];
-   int actualConv = 0;
+   load_groups(all_group_conv, clients);
+
+   load_friends(clients);
 
    twoPeopleConv *all_dm_conv[MAX_DM_COUNT];
    int actualDMConv = 0;
@@ -137,12 +345,60 @@ static void app(void)
 
          FD_SET(csock, &rdfs);
 
-         Client *c = newClient(csock, buffer);
+         /* Vérifie si le client existe déja*/
+         Client *c = NULL;
+         for (int i = 0; i < actual; ++i)
+         {
+            /* Vérification des pseudos */
+            if (strcmp(clients[i]->name, buffer) == 0)
+            {
+               /* Vérification si le client est déja connecté */
+               if (clients[i]->status == CONNECTED)
+               {
+                  int free_pseudo = 0;
+                  while (free_pseudo == 0)
+                  {
+                     strncpy(buffer, "[ERR] Pseudo is already connected to server\n", BUF_SIZE - 1);
+                     strcat(buffer, "Enter another pseudo : ");
+                     write_client(csock, buffer);
+                     read_client(csock, buffer);
 
-         clients[actual] = c;
-         actual++;
-         printf("* [CON] %s connected to server\n", c->name);
-         printHelpPageHome(c);
+                     for (int k = 0; k < actual; ++k)
+                     {
+                        free_pseudo = 1;
+                        if (strcmp(clients[k]->name, buffer) == 0)
+                        {
+                           free_pseudo = 0;
+                           break;
+                        }
+                     }
+                  }
+               }
+               else
+               {
+                  clients[i]->sock = csock;
+                  clients[i]->status = CONNECTED;
+                  c = clients[i];
+                  printf("* [CON] %s reconnected to server\n", c->name);
+               }
+               break;
+            }
+         }
+
+         if (c == NULL)
+         {
+            /* Sinon on en crée un nouveau */
+
+            Client *c = newClient(csock, buffer, CONNECTED);
+            clients[actual] = c;
+            actual++;
+
+            FILE *file = fopen("history/clients.txt", "a");
+            fprintf(file, "%s\n", c->name);
+            fclose(file);
+
+            printf("* [NEW] %s connected to server\n", c->name);
+         }
       }
       else
       {
@@ -158,9 +414,15 @@ static void app(void)
                if (c == 0)
                {
                   closesocket(clients[i]->sock);
+                  clients[i]->status = DISCONNECTED;
+                  clients[i]->sock = NULL;
+
                   strncpy(buffer, client->name, BUF_SIZE - 1);
+                  strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
+                  send_message_to_all_clients(clients, client, actual, buffer, 1);
+
                   strncat(buffer, " s'est déconnecté *********\n", BUF_SIZE - strlen(buffer) - 1);
-                  
+
                   if (!(client-> actualConv == NULL) && client-> actualDMConv == NULL) {
                      send_message_to_clients_in_conv(client -> actualConv,client,buffer);
                   }
@@ -175,7 +437,7 @@ static void app(void)
                   }
 
                   printf("* [DISCO] %s disconnected from server\n", client->name);
-                  remove_client(clients, i, &actual);
+                  // remove_client(clients, i, &actual);
                }
                else if (!strcmp(buffer, "$help"))
                {
@@ -214,11 +476,26 @@ static void app(void)
                      all_group_conv[actualConv] = newGroupConv;
                      actualConv++;
 
-                     /*Gestion de l'historique*/
-                     strcpy(buffer,"../history/group/");
-                     strcat(buffer,newGroupConv->name);
-                     strcat(buffer,".his");
-                     strcpy(newGroupConv -> pathToHistory,buffer);
+                  FILE *file = fopen("history/groups.txt", "a");
+                  fprintf(file, "%s\n", newGroupConv->name);
+                  fclose(file);
+
+
+                  /* Create member list file */
+                  char member_path[150] = "";
+                  strcat(member_path, "history/group/");
+                  strcat(member_path, newGroupConv->name);
+                  strcat(member_path, ".mbr");
+
+                  FILE *member_file = fopen(member_path, "w");
+                  fprintf(member_file, "%s\n", client->name);
+                  fclose(member_file);
+
+                  /* Gestion de l'historique */
+                  strcpy(buffer, "../history/group/");
+                  strcat(buffer, newGroupConv->name);
+                  strcat(buffer, ".his");
+                  strcpy(newGroupConv->pathToHistory, buffer);
 
                      if(fopen(newGroupConv -> pathToHistory, "r") == NULL) {
                         fopen(newGroupConv -> pathToHistory, "w");
@@ -292,9 +569,19 @@ static void app(void)
                            // Le pseudo est le même que celui entré par le client
                            if (!strcmp(clients[k]->name, buffer))
                            {
-                           
+
                               add_client_to_conv(clients[k], conv);
                               printToClient(client,"Utilisateur ajouté dans le groupe.\n");
+
+                              /* Create member list file */
+                              char member_path[150] = "";
+                              strcat(member_path, "history/group/");
+                              strcat(member_path, conv->name);
+                              strcat(member_path, ".mbr");
+
+                              FILE *member_file = fopen(member_path, "a");
+                              fprintf(member_file, "%s\n", clients[k]->name);
+                              fclose(member_file);
 
                               it5++;
                               break;
@@ -341,7 +628,7 @@ static void app(void)
 
                            strncpy(buffer, "Ami ajouté\n", BUF_SIZE - 1);
                            send_message_to_client(client, buffer, 1);
-                           
+
                            strncpy(buffer, "***************************************\n", BUF_SIZE - 1);
                            strcat(buffer, client -> name);
                            strcat(buffer, " vous a ajouté en ami\n***************************************\n");
@@ -357,11 +644,11 @@ static void app(void)
                      }
                   }
                }
-               else if (!strcmp(buffer,"$joingroup")) 
+               else if (!strcmp(buffer,"$joingroup"))
                {
                   printToClient(client,"Choisissez une de vos conversations de groupe à rejoindre :\n");
                   printGroupsToClient(client);
-         
+
                   read_client(client -> sock, buffer);
                   int maxConv = client -> numberOfConv;
                   groupConv* conv = NULL;
@@ -397,7 +684,7 @@ static void app(void)
                      send_message_to_client(client, buffer, 1);
                   }
                }
-               else if (!strcmp(buffer,"$dm")) 
+               else if (!strcmp(buffer,"$dm"))
                {
                   printToClient(client,"Choisissez un ami à contacter directement : \n");
                   printFriendsToClient(client); //message 0 amis print dans la fonction
@@ -438,12 +725,12 @@ static void app(void)
                            if(it == maxJ) {
                               all_dm_conv[actualDMConv] = create_new_dm_conv(client,client->friends[k]);
                               client -> actualDMConv = all_dm_conv[actualDMConv];
-                              actualDMConv++;    
+                              actualDMConv++;
                            }
 
                            break;
                         }
-                        
+
                         it1++;
                      }
 
@@ -461,7 +748,7 @@ static void app(void)
                      }
                   }
                }
-               else if (!strcmp(buffer,"$exit")) 
+               else if (!strcmp(buffer,"$exit"))
                {
                   if(client-> actualConv == NULL && client-> actualDMConv == NULL) {
                      printToClient(client,"Vous êtes déjà à l'accueil.\n");
@@ -473,11 +760,11 @@ static void app(void)
                      printHelpPageHome(client);
                   }
                }
-               else if (!strcmp(buffer,"$listgroups")) 
+               else if (!strcmp(buffer,"$listgroups"))
                {
                   printGroupsToClient(client);
                }
-               else if (!strcmp(buffer,"$listfriends")) 
+               else if (!strcmp(buffer,"$listfriends"))
                {
                   printFriendsToClient(client);
                }
@@ -494,12 +781,12 @@ static void app(void)
                   }
                   // Conversation client
                   else if (client-> actualConv == NULL && !(client-> actualDMConv == NULL)) {
-                     // char temp[BUF_SIZE];
-                     // strcpy(temp,buffer);
-                     // strcpy(buffer,"\033[0;36m");
-                     // strcat(buffer,temp);
-                     // strcat(buffer,"\033[0;37m");
-                     //sprintf(test,"\033[0;36m%s\033[0;37m",buffer);
+                      char temp[BUF_SIZE];
+                      strcpy(temp,buffer);
+                      strcpy(buffer,"\033[0;36m");
+                      strcat(buffer,temp);
+                      strcat(buffer,"\033[0;37m");
+                     sprintf(test,"\033[0;36m%s\033[0;37m",buffer);
                      if(!strcmp(client -> name, client -> actualDMConv -> person1 -> name)) {
                         send_direct_message_to_client(client -> actualDMConv -> person1, client -> actualDMConv -> person2, client -> actualDMConv, buffer);
                         printf("* [DIRECTMESS] Message from %s to %s: %s \n",client -> name,client -> actualDMConv -> person2 -> name,buffer);
@@ -512,7 +799,7 @@ static void app(void)
                   else {
 
                   }
-               }    
+               }
                break;
             }
          }
@@ -534,6 +821,8 @@ static void clear_clients(Client **clients, groupConv **conv, int actual, int ac
 
    for (int i = 0; i < actualConv; ++i)
    {
+      fclose(conv[i]->history);
+      free(conv[i]->history);
       free(conv[i]);
    }
 }
@@ -555,7 +844,7 @@ static void send_message_to_all_clients(Client **clients, Client *sender, int ac
    for (i = 0; i < actual; i++)
    {
       /* we don't send message to the sender */
-      if (sender->sock != clients[i]->sock)
+      if (clients[i]->status == CONNECTED && clients[i]->sock != sender->sock)
       {
          if (from_server == 0)
          {
@@ -592,7 +881,7 @@ static void send_direct_message_to_client(Client* sender, Client *receiver, twoP
    strcpy(message, sender -> name);
    strncat(message, " : ", sizeof message - strlen(message) - 1);
    strncat(message, buffer, sizeof message - strlen(message) - 1);
-   
+
    if(receiver -> actualDMConv == dmConv) {
       write_client(receiver->sock, message);
    }
@@ -712,14 +1001,14 @@ static twoPeopleConv* create_new_dm_conv(Client* client1, Client* client2) {
 
    twoPeopleConv *newTwoPeopleConv = malloc(sizeof(twoPeopleConv));
    newTwoPeopleConv -> person1 = client1;
-   newTwoPeopleConv -> person2 = client2;                             
-   
+   newTwoPeopleConv -> person2 = client2;
+
    client1-> direct_messages[client1->numberOfDM] = newTwoPeopleConv;
-   (client1->numberOfDM)++;    
+   (client1->numberOfDM)++;
 
    client2-> direct_messages[client2->numberOfDM] = newTwoPeopleConv;
-   (client2->numberOfDM)++;                                                     
-   
+   (client2->numberOfDM)++;
+
    /*Gestion de l'historique*/
    strcpy(temp,"../history/person/");
    if(strcmp(newTwoPeopleConv -> person1 -> name,newTwoPeopleConv -> person2 -> name) < 0) {
@@ -733,8 +1022,8 @@ static twoPeopleConv* create_new_dm_conv(Client* client1, Client* client2) {
       strcat(temp,newTwoPeopleConv -> person1 -> name);
    }
    strcat(temp,".his");
-   strcpy(newTwoPeopleConv -> pathToHistory,temp);                             
-   
+   strcpy(newTwoPeopleConv -> pathToHistory,temp);
+
    if(fopen(newTwoPeopleConv -> pathToHistory, "r") == NULL) {
       fopen(newTwoPeopleConv -> pathToHistory, "w");
    }
@@ -810,9 +1099,12 @@ static void clearClientScreen(Client* client) {
 
 int main(int argc, char **argv)
 {
+
    init();
 
    app();
+
+   save();
 
    end();
 
