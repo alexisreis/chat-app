@@ -9,8 +9,10 @@
 
 static int actual = 0;
 static int actualConv = 0;
+static int actualDMConv = 0;
 static Client *clients[MAX_CLIENTS];
 static groupConv *all_group_conv[MAX_GROUPS];
+static twoPeopleConv *all_dm_conv[MAX_DM_COUNT];
 
 static void init(void)
 {
@@ -23,6 +25,16 @@ static void init(void)
       exit(EXIT_FAILURE);
    }
 #endif
+
+   if(fopen("history/clients.txt", "r") == NULL) {
+      fopen("history/clients.txt", "w");
+   }
+   if(fopen("history/friends.txt", "r") == NULL) {
+      fopen("history/friends.txt", "w");
+   }
+   if(fopen("history/groups.txt", "r") == NULL) {
+      fopen("history/groups.txt", "w");
+   }
 }
 
 static void save_clients(void)
@@ -287,9 +299,6 @@ static void app(void)
 
    load_friends(clients);
 
-   twoPeopleConv *all_dm_conv[MAX_DM_COUNT];
-   int actualDMConv = 0;
-
    fd_set rdfs;
 
    while (1)
@@ -389,7 +398,7 @@ static void app(void)
          {
             /* Sinon on en crée un nouveau */
 
-            Client *c = newClient(csock, buffer, CONNECTED);
+            c = newClient(csock, buffer, CONNECTED);
             clients[actual] = c;
             actual++;
 
@@ -399,6 +408,8 @@ static void app(void)
 
             printf("* [NEW] %s connected to server\n", c->name);
          }
+
+         printToClient(c,"Bienvenue ! Pour obtenir la liste des commandes disponibles, tapez $help !\n");
       }
       else
       {
@@ -418,9 +429,6 @@ static void app(void)
                   clients[i]->sock = NULL;
 
                   strncpy(buffer, client->name, BUF_SIZE - 1);
-                  strncat(buffer, " disconnected !", BUF_SIZE - strlen(buffer) - 1);
-                  send_message_to_all_clients(clients, client, actual, buffer, 1);
-
                   strncat(buffer, " s'est déconnecté *********\n", BUF_SIZE - strlen(buffer) - 1);
 
                   if (!(client-> actualConv == NULL) && client-> actualDMConv == NULL) {
@@ -492,7 +500,7 @@ static void app(void)
                   fclose(member_file);
 
                   /* Gestion de l'historique */
-                  strcpy(buffer, "../history/group/");
+                  strcpy(buffer, "history/group/");
                   strcat(buffer, newGroupConv->name);
                   strcat(buffer, ".his");
                   strcpy(newGroupConv->pathToHistory, buffer);
@@ -629,10 +637,13 @@ static void app(void)
                            strncpy(buffer, "Ami ajouté\n", BUF_SIZE - 1);
                            send_message_to_client(client, buffer, 1);
 
-                           strncpy(buffer, "***************************************\n", BUF_SIZE - 1);
-                           strcat(buffer, client -> name);
-                           strcat(buffer, " vous a ajouté en ami\n***************************************\n");
-                           send_message_to_client(newFriend, buffer, 1);
+                           if(newFriend -> status == 1) {
+                              strncpy(buffer, "***************************************\n", BUF_SIZE - 1);
+                              strcat(buffer, client -> name);
+                              strcat(buffer, " vous a ajouté en ami\n***************************************\n");
+                              send_message_to_client(newFriend, buffer, 1);
+                           }
+                           
                            break;
                         }
                      }
@@ -672,6 +683,7 @@ static void app(void)
                         strcat(buffer, "\n*************************");
                         printToClient(client, buffer);
 
+                        printHistoryOfGroupConv(client,conv);
                         break;
                      }
                   }
@@ -745,6 +757,7 @@ static void app(void)
                         strcat(buffer, " *********");
 
                         printToClient(client,buffer);
+                        printHistoryOfDMConv(client,client -> actualDMConv);
                      }
                   }
                }
@@ -781,12 +794,11 @@ static void app(void)
                   }
                   // Conversation client
                   else if (client-> actualConv == NULL && !(client-> actualDMConv == NULL)) {
-                      char temp[BUF_SIZE];
-                      strcpy(temp,buffer);
-                      strcpy(buffer,"\033[0;36m");
-                      strcat(buffer,temp);
-                      strcat(buffer,"\033[0;37m");
-                     sprintf(test,"\033[0;36m%s\033[0;37m",buffer);
+                     char temp[BUF_SIZE];
+                     strcpy(temp,buffer);
+                     strcpy(buffer,"\033[0;36m");
+                     strcat(buffer,temp);
+                     strcat(buffer,"\033[0;37m");
                      if(!strcmp(client -> name, client -> actualDMConv -> person1 -> name)) {
                         send_direct_message_to_client(client -> actualDMConv -> person1, client -> actualDMConv -> person2, client -> actualDMConv, buffer);
                         printf("* [DIRECTMESS] Message from %s to %s: %s \n",client -> name,client -> actualDMConv -> person2 -> name,buffer);
@@ -821,8 +833,6 @@ static void clear_clients(Client **clients, groupConv **conv, int actual, int ac
 
    for (int i = 0; i < actualConv; ++i)
    {
-      fclose(conv[i]->history);
-      free(conv[i]->history);
       free(conv[i]);
    }
 }
@@ -1010,7 +1020,7 @@ static twoPeopleConv* create_new_dm_conv(Client* client1, Client* client2) {
    (client2->numberOfDM)++;
 
    /*Gestion de l'historique*/
-   strcpy(temp,"../history/person/");
+   strcpy(temp,"history/person/");
    if(strcmp(newTwoPeopleConv -> person1 -> name,newTwoPeopleConv -> person2 -> name) < 0) {
       strcat(temp,newTwoPeopleConv -> person1 -> name);
       strcat(temp,"_");
@@ -1096,10 +1106,39 @@ static void clearClientScreen(Client* client) {
    printToClient(client,"\033[2J");
 }
 
+static void printHistoryOfDMConv(Client* client, twoPeopleConv* dmConv) {
+   FILE* fd = fopen(dmConv -> pathToHistory, "r");
+   if(fd == NULL) {
+      printf("[ERR] - Could not load history of DM conv between %s and %s", dmConv -> person1 -> name, dmConv -> person2 -> name);
+      printToClient(client,"[ERREUR] - Erreur au chargement de l'historique. Vous pouvez toujours continuer à discuter :");
+      return;
+   }
+
+   char temp[BUF_SIZE];
+   while (fgets(temp, BUF_SIZE, fd) != NULL) { // on ne peut pas print plus de BUF_SIZE caractères au client par les sockets
+      printToClient(client, temp);
+   }
+   fclose(fd);
+}
+
+static void printHistoryOfGroupConv(Client* client, groupConv* groupConvC) {
+   FILE* fd = fopen(groupConvC -> pathToHistory, "r");
+   if(fd == NULL) {
+      printf("[ERR] - Could not load history of GroupConv %s", groupConvC -> name);
+      printToClient(client,"[ERREUR] - Erreur au chargement de l'historique. Vous pouvez toujours continuer à discuter :");
+      return;
+   }
+
+   char temp[BUF_SIZE];
+   while (fgets(temp, BUF_SIZE, fd) != NULL) { // on ne peut pas print plus de BUF_SIZE caractères au client par les sockets
+      printToClient(client, temp);
+   }
+   fclose(fd);
+}
+
 
 int main(int argc, char **argv)
 {
-
    init();
 
    app();

@@ -57,6 +57,7 @@ static void printHelpPageHome(Client* client);
 static void printGroupsToClient(Client* client);
 static void printFriendsToClient(Client* client);
 static void clearClientScreen(Client* client);
-
+static void printHistoryOfDMConv(Client* client, twoPeopleConv* dmConv);
+static void printHistoryOfGroupConv(Client* client, groupConv* groupConvC);
 
 #endif /* guard */

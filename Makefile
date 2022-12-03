@@ -1,10 +1,10 @@
 CC=gcc
 BIN=./bin
 
-all : client server
+all : Client Server
 
-client: ./Client/Client.c
+Client: ./Client/Client.c
 	$(CC) -o $(BIN)/$@ $<
 
-server: ./Server/Server.c
+Server: ./Server/Server.c
 	$(CC) -o $(BIN)/$@ $<
