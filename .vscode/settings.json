@@ -1,6 +1,8 @@
 {
     "files.associations": {
+        "*.pl": "prolog",
         "typeinfo": "c",
-        "client.h": "c"
+        "client.h": "c",
+        "server.h": "c"
     }
 }

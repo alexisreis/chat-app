@@ -54,5 +54,9 @@ static void add_client_to_conv(Client *client, groupConv *conv);
 static twoPeopleConv* create_new_dm_conv(Client* client1, Client* client2);
 static void printToClient(Client* client, const char* toDisplay);
 static void printHelpPageHome(Client* client);
+static void printGroupsToClient(Client* client);
+static void printFriendsToClient(Client* client);
+static void clearClientScreen(Client* client);
+
 
 #endif /* guard */
