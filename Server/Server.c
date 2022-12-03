@@ -67,14 +67,6 @@ void add_friend(Client *client, Client *friend)
 
 static void app(void)
 {
-   // const char[] LIST_HELP = "Commandes disponibles : \n" +
-   // + "\t $debug : print les logs côté serveur\n"
-   // + "\t $creategroup : créer une conversation de groupe\n"
-   // + "\t $addgroup : ajouter un ami dans une conversation de groupe\n"
-   // + "\t $listgroup : lister les conversations de groupe\n"
-   // + "\t $addfriend : ajouter un ami\n"
-   // + "\t $listfriend : lister les amis\n";
-
    SOCKET sock = init_connection();
    char buffer[BUF_SIZE];
    /* the index for the array */
@@ -86,6 +78,9 @@ static void app(void)
    /* an array for all group conversations*/
    groupConv *all_group_conv[MAX_GROUPS];
    int actualConv = 0;
+
+   twoPeopleConv *all_dm_conv[MAX_DM_COUNT];
+   int actualDMConv = 0;
 
    fd_set rdfs;
 
@@ -142,17 +137,12 @@ static void app(void)
 
          FD_SET(csock, &rdfs);
 
-         /*          Client* c = malloc(sizeof(Client));
-                  c -> sock = csock;
-                  c -> numberOfConv = 0;
-                  c -> numberOfFriends = 0; */
-         // Client c = { csock };
          Client *c = newClient(csock, buffer);
-         // strncpy(c -> name, buffer, BUF_SIZE - 1);
 
          clients[actual] = c;
          actual++;
          printf("* [CON] %s connected to server\n", c->name);
+         printHelpPageHome(c);
       }
       else
       {
@@ -174,28 +164,13 @@ static void app(void)
                   printf("* [DISCO] %s disconnected from server\n", client->name);
                   remove_client(clients, i, &actual);
                }
-               else if (!strcmp(buffer, "$"))
+               else if (!strcmp(buffer, "$help"))
                {
-                  strncpy(buffer, "Choisissez un pseudo : ", BUF_SIZE - 1);
-                  send_message_to_client(client, buffer, 1);
-
-                  read_client(clients[i]->sock, buffer);
-                  for (i = 0; i < actual; i++)
-                  {
-                     // Le pseudo est le même que celui entré par le client
-                     if (!strcmp(clients[i]->name, buffer))
-                     {
-                        // send_message_to_client(clients[i],);
-                        strncpy(buffer, "L'utilisateur existe", BUF_SIZE - 1);
-                        send_message_to_client(client, buffer, 1);
-                        break;
-                     }
-                  }
+                  printHelpPageHome(client);
                }
-               else if (!strcmp(buffer, "$create"))
+               else if (!strcmp(buffer, "$creategroup"))
                {
-                  strncpy(buffer, "Choisissez un un nom de conversation : ", BUF_SIZE - 1);
-                  send_message_to_client(client, buffer, 1);
+                  printToClient(client,"Choisissez un nom de conversation :");
 
                   read_client(client->sock, buffer);
 
@@ -215,14 +190,12 @@ static void app(void)
                   strcat(buffer,newGroupConv->name);
                   strcat(buffer,".his");
                   strcpy(newGroupConv -> pathToHistory,buffer);
-                  newGroupConv -> history = malloc(sizeof(FILE));
 
-                  if(fopen(newGroupConv -> pathToHistory, "r+") == NULL) {
-                     newGroupConv -> history = fopen(newGroupConv -> pathToHistory, "w");
+                  if(fopen(newGroupConv -> pathToHistory, "r") == NULL) {
+                     fopen(newGroupConv -> pathToHistory, "w");
                   }
-                  else {
-                     newGroupConv -> history = fopen(newGroupConv -> pathToHistory, "r+");
-                  }
+
+                  printToClient(client,"Conversation créée !\n");
                }
                else if (!strcmp(buffer, "$debug"))
                {
@@ -257,7 +230,7 @@ static void app(void)
                      }
                   }
                }
-               else if (!strcmp(buffer, "$add"))
+               else if (!strcmp(buffer, "$addgroup"))
                {
                   strncpy(buffer, "Choisissez une conversation de groupe : ", BUF_SIZE - 1);
                   send_message_to_client(client, buffer, 1);
@@ -310,7 +283,7 @@ static void app(void)
                      send_message_to_client(client, buffer, 1);
                   }
                }
-               else if (!strcmp(buffer, "$friend"))
+               else if (!strcmp(buffer, "$addfriend"))
                {
                   strncpy(buffer, "Entrez le pseudo de la personne à ajouter en ami : ", BUF_SIZE - 1);
                   send_message_to_client(client, buffer, 1);
@@ -345,7 +318,7 @@ static void app(void)
                      send_message_to_client(client, buffer, 1);
                   }
                }
-               else if (!strcmp(buffer, "$list"))
+               else if (!strcmp(buffer, "$listfriends"))
                {
                   strncpy(buffer, "Liste d'amis :", BUF_SIZE - 1);
                   int numberOfFriends = client->numberOfFriends;
@@ -365,7 +338,7 @@ static void app(void)
                   strcat(buffer, "\n");
                   send_message_to_client(client, buffer, 1);
                }
-               else if (!strcmp(buffer,"$join")) 
+               else if (!strcmp(buffer,"$joingroup")) 
                {
                   strncpy(buffer, "*********************\n Choisissez une de vos conversations de groupe à rejoindre : \n********************\n", BUF_SIZE - 1);
                   send_message_to_client(client, buffer, 1);
@@ -397,16 +370,99 @@ static void app(void)
                      send_message_to_client(client, buffer, 1);
                   }
                }
-               else
+               else if (!strcmp(buffer,"$dm")) 
                {
-                  // send_message_to_all_clients(clients, client, actual, buffer, 0);
-                  if(client-> actualConv == NULL) {
-                     strncpy(buffer, "Vous n'êtes pas dans une conversation !", BUF_SIZE - 1);
+                  strncpy(buffer, "Choisissez un ami à contacter directement : \n", BUF_SIZE - 1);
+                  send_message_to_client(client, buffer, 1);
+                  
+                  read_client(client -> sock, buffer);
+                  int maxfriends = client -> numberOfFriends;
+
+                  char toPrint[BUF_SIZE];
+
+                  int it1 = 0;
+                  for (int k = 0; k < maxfriends; k++)
+                  {
+                     // Le pseudo est le même que celui entré par le client
+                     if (!strcmp(client->friends[k]->name, buffer))
+                     {
+                        strncpy(toPrint, "Votre ami : ", BUF_SIZE - 1);
+                        strcat(toPrint,client->friends[k]->name);
+                        strcat(toPrint," a été trouvé, démarrage de la conversation privée...\n");
+                        send_message_to_client(client, toPrint, 1);
+
+                        /* On regarde si la conversation existe déjà en tant qu'objet */
+                        int maxJ = client -> numberOfDM;
+                        printf("%d ------\n", maxJ);
+                        int it = 0;
+                        for (int j = 0; j < maxJ; ++j)
+                        {
+                           printf("dans le baoucleA\n");
+                           printf("%s \n",client->direct_messages[j]->person1->name);
+                           printf("%s \n",client->direct_messages[j]->person2->name);
+                           printf("%s \n",buffer);
+                           if (!strcmp(client->direct_messages[j]->person1->name, buffer)
+                              || !strcmp(client->direct_messages[j]->person2->name, buffer))
+                           {
+                              client -> actualDMConv = client -> direct_messages[j];
+                              printf("SLALALLAALLA\n");
+                              break;
+                           }
+                           it++;
+                        }
+
+                        // La conversation n'existe pas en tant qu'objet
+                        if(it == maxJ) {
+                           printf("OOOOH PAS COOL\n");
+                           all_dm_conv[actualDMConv] = create_new_dm_conv(client,client->friends[k]);
+                           client -> actualDMConv = all_dm_conv[actualDMConv];
+                           actualDMConv++;    
+                        }
+
+                        break;
+                     }
+                     
+                     it1++;
+                  }
+
+                  if(it1 == maxfriends) {
+                     strncpy(buffer, "La personne n'existe pas ou vous n'êtes pas ami avec elle", BUF_SIZE - 1);
                      send_message_to_client(client, buffer, 1);
                   }
                   else {
+                     strncpy(buffer, "********* CONVERSATION ENTRE ", BUF_SIZE - 1);
+                     strcat(buffer, client -> actualDMConv -> person1 -> name);
+                     strcat(buffer, " et ");
+                     strcat(buffer, client -> actualDMConv -> person2 -> name);
+                     strcat(buffer, " *********");
+
+                     send_message_to_client(client, buffer, 1);
+                  }
+               }
+               else
+               {
+                  // send_message_to_all_clients(clients, client, actual, buffer, 0);
+                  if(client-> actualConv == NULL && client-> actualDMConv == NULL) {
+                     printToClient(client,"Commande inconnue. Tapez $help pour afficher l'aide.\n");
+                  }
+                  // Conversation de groupe
+                  else if (!(client-> actualConv == NULL) && client-> actualDMConv == NULL) {
                      send_message_to_clients_in_conv(client -> actualConv,client,buffer);
                      printf("* [MESS] Message from %s : %s in conv %s\n",client -> name,buffer,client -> actualConv -> name);
+                  }
+                  // Conversation client
+                  else if (client-> actualConv == NULL && !(client-> actualDMConv == NULL)) {
+                     if(!strcmp(client -> name, client -> actualDMConv -> person1 -> name)) {
+                        send_direct_message_to_client(client -> actualDMConv -> person1, client -> actualDMConv -> person2, client -> actualDMConv, buffer);
+                        printf("* [DIRECTMESS] Message from %s to %s: %s \n",client -> name,client -> actualDMConv -> person2 -> name,buffer);
+                     }
+                     else {
+                        send_direct_message_to_client(client -> actualDMConv -> person2, client -> actualDMConv -> person1, client -> actualDMConv, buffer);
+                        printf("* [DIRECTMESS] Message from %s to %s: %s \n",client -> name,client -> actualDMConv -> person1 -> name, buffer);
+                     }
+                  }
+                  else {
+
                   }
                }    
                break;
@@ -430,8 +486,6 @@ static void clear_clients(Client **clients, groupConv **conv, int actual, int ac
 
    for (int i = 0; i < actualConv; ++i)
    {
-      fclose(conv[i] -> history);
-      free(conv[i] -> history);
       free(conv[i]);
    }
 }
@@ -481,6 +535,26 @@ static void send_message_to_client(Client *receiver, const char *buffer, char fr
    write_client(receiver->sock, message);
 }
 
+static void send_direct_message_to_client(Client* sender, Client *receiver, twoPeopleConv* dmConv, const char *buffer)
+{
+   char message[BUF_SIZE];
+   message[0] = 0;
+
+   printf("%s / %s\n",sender -> name, receiver -> name);
+   strcpy(message, sender -> name);
+   strncat(message, " : ", sizeof message - strlen(message) - 1);
+   strncat(message, buffer, sizeof message - strlen(message) - 1);
+   
+   if(receiver -> actualDMConv == dmConv) {
+      write_client(receiver->sock, message);
+   }
+
+   /* Gestion dans l'historique */
+   FILE* temp = fopen(dmConv -> pathToHistory,"a");
+   fprintf(temp,"%s\n",message);
+   fclose(temp);
+}
+
 static void send_message_to_clients_in_conv(groupConv* conv, Client* sender, const char *buffer)
 {
    int i = 0;
@@ -504,7 +578,9 @@ static void send_message_to_clients_in_conv(groupConv* conv, Client* sender, con
    }
 
    /* Gestion dans l'historique */
-   fprintf(conv -> history,"%s",message);
+   FILE* temp = fopen(conv -> pathToHistory,"a");
+   fprintf(temp,"%s\n",message);
+   fclose(temp);
 }
 
 static int init_connection(void)
@@ -582,6 +658,65 @@ static void add_client_to_conv(Client* client, groupConv* conv)
    (conv -> numberOfClients)++;
 }
 
+static twoPeopleConv* create_new_dm_conv(Client* client1, Client* client2) {
+
+   char temp[BUF_SIZE];
+
+   twoPeopleConv *newTwoPeopleConv = malloc(sizeof(twoPeopleConv));
+   newTwoPeopleConv -> person1 = client1;
+   newTwoPeopleConv -> person2 = client2;                             
+   
+   client1-> direct_messages[client1->numberOfDM] = newTwoPeopleConv;
+   (client1->numberOfDM)++;    
+
+   client2-> direct_messages[client2->numberOfDM] = newTwoPeopleConv;
+   (client2->numberOfDM)++;                                                     
+   
+   /*Gestion de l'historique*/
+   strcpy(temp,"../history/person/");
+   if(strcmp(newTwoPeopleConv -> person1 -> name,newTwoPeopleConv -> person2 -> name) < 0) {
+      strcat(temp,newTwoPeopleConv -> person1 -> name);
+      strcat(temp,"_");
+      strcat(temp,newTwoPeopleConv -> person2 -> name);
+   }
+   else {
+      strcat(temp,newTwoPeopleConv -> person2 -> name);
+      strcat(temp,"_");
+      strcat(temp,newTwoPeopleConv -> person1 -> name);
+   }
+   strcat(temp,".his");
+   strcpy(newTwoPeopleConv -> pathToHistory,temp);                             
+   
+   if(fopen(newTwoPeopleConv -> pathToHistory, "r") == NULL) {
+      fopen(newTwoPeopleConv -> pathToHistory, "w");
+   }
+
+   return newTwoPeopleConv;
+}
+
+static void printToClient(Client* client, const char* toDisplay) {
+   char toPrint[BUF_SIZE];
+   strncpy(toPrint, toDisplay, BUF_SIZE - 1);
+
+   send_message_to_client(client, toPrint, 1);
+}
+
+static void printHelpPageHome(Client* client) {
+   char LIST_HELP[BUF_SIZE];
+   strcpy(LIST_HELP,"------ ACCUEIL ------\n");
+   strcat(LIST_HELP,"Commandes disponibles : \n");
+   strcat(LIST_HELP,"\t $debug : print les logs côté serveur\n");
+   strcat(LIST_HELP,"\t $creategroup : créer une conversation de groupe\n");
+   strcat(LIST_HELP,"\t $addgroup : ajouter un ami dans une conversation de groupe\n");
+   strcat(LIST_HELP,"\t $listgroup : lister les conversations de groupe\n");
+   strcat(LIST_HELP,"\t $addfriend : ajouter un ami\n");
+   strcat(LIST_HELP,"\t $listfriends : lister les amis\n");
+   strcat(LIST_HELP,"\t $joingroup: rejoindre une conversation de groupe\n");
+   strcat(LIST_HELP,"\t $dm : commencer une conversation privée avec un de vos amis\n\n");
+   strcat(LIST_HELP,"\t $help : pour afficher la liste des coommandes disponibles\n");
+   printToClient(client,LIST_HELP);
+
+}
 
 int main(int argc, char **argv)
 {

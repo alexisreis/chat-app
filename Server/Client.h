@@ -3,11 +3,14 @@
 
 #define MAX_FRIENDS_COUNT 10
 #define MAX_GROUP_COUNT 10
+#define MAX_DM_COUNT 50
 
 #include <stdio.h>
 #include "Server.h"
 
 struct groupConv;
+struct twoPeopleConv;
+
 struct Client
 {
    SOCKET sock;
@@ -16,7 +19,11 @@ struct Client
    struct groupConv* group_conv[MAX_GROUP_COUNT];
    int numberOfConv;
 
+   struct twoPeopleConv* direct_messages[MAX_DM_COUNT];
+   int numberOfDM;
+
    struct groupConv* actualConv;
+   struct twoPeopleConv* actualDMConv;
 
    struct Client* friends[MAX_FRIENDS_COUNT];
    int numberOfFriends;
@@ -28,12 +35,19 @@ struct groupConv
    struct Client* clients[10];
 
    int numberOfClients;
+   char pathToHistory[100];
+};
+
+struct twoPeopleConv
+{
+   struct Client* person1;
+   struct Client* person2;
 
    char pathToHistory[100];
-   FILE* history;
 };
 
 typedef struct Client Client;
 typedef struct groupConv groupConv;
+typedef struct twoPeopleConv twoPeopleConv;
 
 #endif /* guard */

@@ -48,6 +48,11 @@ static void remove_client(Client **clients, int to_remove, int *actual);
 static void clear_clients(Client **clients, groupConv **conv, int actual, int actualConv);
 
 static void send_message_to_client(Client *receiver, const char *buffer, char from_server);
+static void send_direct_message_to_client(Client* sender, Client *receiver, twoPeopleConv* dmConv, const char *buffer);
 static void send_message_to_clients_in_conv(groupConv* conv, Client* sender, const char *buffer);
 static void add_client_to_conv(Client *client, groupConv *conv);
+static twoPeopleConv* create_new_dm_conv(Client* client1, Client* client2);
+static void printToClient(Client* client, const char* toDisplay);
+static void printHelpPageHome(Client* client);
+
 #endif /* guard */
