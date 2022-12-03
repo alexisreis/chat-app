@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <ctype.h>
 
 #include "Server.h"
 #include "Client.h"
@@ -13,6 +14,18 @@ static int actualDMConv = 0;
 static Client *clients[MAX_CLIENTS];
 static groupConv *all_group_conv[MAX_GROUPS];
 static twoPeopleConv *all_dm_conv[MAX_DM_COUNT];
+static const char* colors[10] = {
+   "\033[1;37m",  //White 
+   "\033[1;35m",  //Purple
+   "\033[1;36m",  //Cyan  
+   "\033[1;30m",  //Black 
+   "\033[1;31m",  //Red   
+   "\033[1;32m",  //Green 
+   "\033[1;33m",  //Yellow
+   "\033[1;34m",  //Blue  
+   "\033[1;36m",  //Cyan
+   "\033[1;31m",  //Red 
+};
 
 static void init(void)
 {
@@ -160,6 +173,14 @@ void load_groups(groupConv **all_conv, Client **clients)
          strcat(member_path, "history/group/");
          strcat(member_path, line);
          strcat(member_path, ".mbr");
+
+         /* Sets path to history */ 
+         char history[150] = "";
+         strcpy(history, "history/group/");
+         strcat(history, line);
+         strcat(history, ".his");
+         strcpy(newGroupConv->pathToHistory, history);
+
 
          FILE *member_file = fopen(member_path, "r");
          if (member_file)
@@ -457,6 +478,11 @@ static void app(void)
 
                   read_client(client->sock, buffer);
 
+                  /* CONVERSION DU BUFFER EN MAJUSCULE*/
+                  for(int i = 0; buffer[i]; i++){
+                     buffer[i] = toupper(buffer[i]);
+                  }
+
                   int maxConv = client->numberOfConv;
                   int existeDeja = 0;
                   for (int k = 0; k < maxConv; k++)
@@ -484,26 +510,26 @@ static void app(void)
                      all_group_conv[actualConv] = newGroupConv;
                      actualConv++;
 
-                  FILE *file = fopen("history/groups.txt", "a");
-                  fprintf(file, "%s\n", newGroupConv->name);
-                  fclose(file);
+                     FILE *file = fopen("history/groups.txt", "a");
+                     fprintf(file, "%s\n", newGroupConv->name);
+                     fclose(file);
 
 
-                  /* Create member list file */
-                  char member_path[150] = "";
-                  strcat(member_path, "history/group/");
-                  strcat(member_path, newGroupConv->name);
-                  strcat(member_path, ".mbr");
+                     /* Create member list file */
+                     char member_path[150] = "";
+                     strcat(member_path, "history/group/");
+                     strcat(member_path, newGroupConv->name);
+                     strcat(member_path, ".mbr");
 
-                  FILE *member_file = fopen(member_path, "w");
-                  fprintf(member_file, "%s\n", client->name);
-                  fclose(member_file);
+                     FILE *member_file = fopen(member_path, "w");
+                     fprintf(member_file, "%s\n", client->name);
+                     fclose(member_file);
 
-                  /* Gestion de l'historique */
-                  strcpy(buffer, "history/group/");
-                  strcat(buffer, newGroupConv->name);
-                  strcat(buffer, ".his");
-                  strcpy(newGroupConv->pathToHistory, buffer);
+                     /* Gestion de l'historique */
+                     strcpy(buffer, "history/group/");
+                     strcat(buffer, newGroupConv->name);
+                     strcat(buffer, ".his");
+                     strcpy(newGroupConv->pathToHistory, buffer);
 
                      if(fopen(newGroupConv -> pathToHistory, "r") == NULL) {
                         fopen(newGroupConv -> pathToHistory, "w");
@@ -554,6 +580,12 @@ static void app(void)
 
                   if(maxConv != 0) {
                      read_client(client->sock, buffer);
+                     
+                     /* CONVERSION DU BUFFER EN MAJUSCULE*/
+                     for(int i = 0; buffer[i]; i++){
+                        buffer[i] = toupper(buffer[i]);
+                     }
+
                      groupConv *conv = NULL;
                      for (int k = 0; k < maxConv; k++)
                      {
@@ -657,43 +689,53 @@ static void app(void)
                }
                else if (!strcmp(buffer,"$joingroup"))
                {
-                  printToClient(client,"Choisissez une de vos conversations de groupe à rejoindre :\n");
+                  
+                  int maxConv = client -> numberOfConv;
                   printGroupsToClient(client);
 
-                  read_client(client -> sock, buffer);
-                  int maxConv = client -> numberOfConv;
-                  groupConv* conv = NULL;
-                  for(int k = 0; k < maxConv; k++) 
-                  {
-                     // Le nom de la conv est le même que celui entré par le client
-                     if(!strcmp(client -> group_conv[k] -> name,buffer)) 
-                     {
-                        conv = client -> group_conv[k]; 
+                  if(maxConv != 0) {
+                     printToClient(client,"Choisissez une de vos conversations de groupe à rejoindre :\n");
+                     read_client(client -> sock, buffer);
 
-                        clearClientScreen(client);
-                        strncpy(buffer, "**************************\nConversation actuelle : ", BUF_SIZE - 1);
-                        strcat(buffer,conv -> name);
-                        strcat(buffer, "\nMembres dans la conversation :\n");
-                        int max = conv -> numberOfClients;
-                        for(int w = 0; w < max; w++) {
-                           strcat(buffer,"\t* ");
-                           strcat(buffer,conv -> clients[w] -> name);
-                           strcat(buffer,"\n");
-                        }
-                        strcat(buffer, "\n*************************");
-                        printToClient(client, buffer);
-
-                        printHistoryOfGroupConv(client,conv);
-                        break;
+                     /* CONVERSION DU BUFFER EN MAJUSCULE*/
+                     for(int i = 0; buffer[i]; i++){
+                        buffer[i] = toupper(buffer[i]);
                      }
-                  }
-                  
-                  if(!(conv == NULL)) {
-                     client -> actualConv = conv;
-                  }
-                  else {
-                     strncpy(buffer, "La conversation n'existe pas.\n**********************", BUF_SIZE - 1);
-                     send_message_to_client(client, buffer, 1);
+
+                     int maxConv = client -> numberOfConv;
+                     groupConv* conv = NULL;
+                     for(int k = 0; k < maxConv; k++) 
+                     {
+                        // Le nom de la conv est le même que celui entré par le client
+                        if(!strcmp(client -> group_conv[k] -> name,buffer)) 
+                        {
+                           conv = client -> group_conv[k]; 
+
+                           clearClientScreen(client);
+                           strncpy(buffer, "**************************\nConversation actuelle : ", BUF_SIZE - 1);
+                           strcat(buffer,conv -> name);
+                           strcat(buffer, "\nMembres dans la conversation :\n");
+                           int max = conv -> numberOfClients;
+                           for(int w = 0; w < max; w++) {
+                              strcat(buffer,"\t* ");
+                              strcat(buffer,conv -> clients[w] -> name);
+                              strcat(buffer,"\n");
+                           }
+                           strcat(buffer, "\n*************************");
+                           printToClient(client, buffer);
+
+                           printHistoryOfGroupConv(client,conv);
+                           break;
+                        }
+                     }
+                     
+                     if(!(conv == NULL)) {
+                        client -> actualConv = conv;
+                     }
+                     else {
+                        strncpy(buffer, "La conversation n'existe pas.\n**********************", BUF_SIZE - 1);
+                        send_message_to_client(client, buffer, 1);
+                     }
                   }
                }
                else if (!strcmp(buffer,"$dm"))
@@ -783,12 +825,28 @@ static void app(void)
                }
                else
                {
-                  // send_message_to_all_clients(clients, client, actual, buffer, 0);
                   if(client-> actualConv == NULL && client-> actualDMConv == NULL) {
                      printToClient(client,"Commande inconnue. Tapez $help pour afficher l'aide.\n");
                   }
                   // Conversation de groupe
                   else if (!(client-> actualConv == NULL) && client-> actualDMConv == NULL) {
+                     
+                     /* Colorer le message */
+                     int col = 0;
+                     for(int k = 0; k < client -> actualConv -> numberOfClients; ++k) 
+                     {
+                        if(!strcmp(client -> name, client -> actualConv -> clients[k] -> name)) {
+                           col = k;
+                           break;
+                        }
+                     }
+                     char temp[BUF_SIZE];
+                     strcpy(temp,buffer);
+                     strcpy(buffer,colors[col]);
+                     strcat(buffer,temp);
+                     strcat(buffer,"\033[0;37m");
+
+                     /* Envoyer le message */
                      send_message_to_clients_in_conv(client -> actualConv,client,buffer);
                      printf("* [MESS] Message from %s : %s in conv %s\n",client -> name,buffer,client -> actualConv -> name);
                   }
