@@ -5,7 +5,7 @@ Application serveur / client, crée avec des sockets en C pour pouvoir communiqu
 >Développée par Simon Poulet et Alexis Reis dans le cadre d'un projet de programmation réseau.
 
 # Comment lancer ?
-Il suffit de créer les fichier exécutables via la commande `make` dans le repertoire racine du projet. 
+Il suffit de créer les fichiers exécutables via la commande `make` dans le répertoire racine du projet. 
 
 ```bash
 make
@@ -28,7 +28,7 @@ Afin de se connecter au serveur et utiliser le chat, il suffit de lancer la comm
 
 > 🚧 Attention
 > 
-> Le pseudo de l'utilisateur est **unique**. A la reconnexion au serveur si le client souhaite récupérer ses données il ldoit se connecter avec le même pseudo où un nouveau client sera créé. De même il et impossible que deux clients se connecte avec le même pseudo simultanément. 
+> Le pseudo de l'utilisateur est **unique**. A la reconnexion au serveur si le client souhaite récupérer ses données il doit se connecter avec le même pseudo où un nouveau client sera créé. De même il est impossible que deux clients se connectent avec le même pseudo simultanément. 
 
 # Fonctionnalités implémentées
 ## Commandes client
@@ -42,13 +42,13 @@ Du côté client, des commandes permettent d'effectuer des actions :
 * `$listgroups` : lister ses conversations de groupe
 * `$help` : afficher toutes les commandes
 
-## Historique et sauvergarde des données
+## Historique et sauvegarde des données
 Toutes les données sont stockées dans des fichiers pour pouvoir les recharger lors d'un redémarrage serveur.
 Ces données sont :
 * les clients (pseudos)
 * les amis
-* les consersations de groupe (membres et messages)
-* les converstions privées (messages)
+* les conversations de groupe (membres et messages)
+* les conversations privées (messages)
 
 Ces fichiers sont stockés dans le repertoire `history/`
 
@@ -85,7 +85,7 @@ AEDI
 
 ```
 
-A chaque griupe est associé un nouveau fichier, sa liste de membres dans le repertoire `history/group` sous le format `nom_du_groupe.mbr`
+A chaque groupe est associé un nouveau fichier, sa liste de membres se situe dans le répertoire `history/group` sous le format `nom_du_groupe.mbr`
 
 Par exemple ici `history/group/AEDI.mbr` : 
 
@@ -99,5 +99,5 @@ Simon
 # Idées d'amélioration
 * **chiffrer** les messages à l'envoi, les **déchiffrer** à la réception
 * ajouter l'authentification de l'utilisateur par **mot de passe hashé**
-* envoyer des notifications lros de la réception d'un message (privé ou groupe)
-* envoyer toutes les notifications de messages reçus lors que l'utilisateur était hors-ligne
+* envoyer des notifications lors de la réception d'un message (privé ou groupe)
+* envoyer toutes les notifications de messages reçus lorsque l'utilisateur était hors-ligne
