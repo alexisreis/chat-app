@@ -1,0 +1,51 @@
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"></head><body class="vsc-initialized"><h1 id="construction-dune-application-distribuée-de-chat-en-utilisant-des-sockets-en-c">Construction d’une application distribuée de chat en utilisant des Sockets en C</h1>
+<h2 id="objectifs">Objectifs</h2>
+<p>Le but est d’implanter une application qui permettent aux clients de 
+discuter de manière texte entre eux. La version basique permet à un 
+client de communiquer avec un autre client. Le TP est incrémental, vous 
+pouvez ajouter des fonctionnalités à votre application à mesure que 
+votre implantation progresse : discussions de groupe, enregistrement des
+ discussions, cryptage point à point, les seules limites sont celles de 
+votre imagination et du temps que vous allez y consacrer.</p>
+<p>Votre travail sera jugé sur une démonstration (prévoir 10 min) et sur le code que vous fournirez.</p>
+<h2 id="description-du-travail-attendu">Description du travail attendu</h2>
+<p>Vous réaliserez votre implantation de manière incrémentale. Il est 
+primordial de bien réfléchir aux aspects architecturaux avant toute 
+implantation: que se passe t il sur le serveur ? sur le client ? quelle 
+est votre politique de communication ? Comment les clients peuvent 
+s’appeler entre eux (juste par leur nom ? autrement ?) ?</p>
+<p>Le squelette du TP est le suivant :</p>
+<ol type="1">
+<li>Faites fonctionner un mini exemple avec un seul client qui peut discuter avec un serveur.<br>
+</li>
+<li>Etendez les programmes serveur et client avec des opérations 
+additionnelles, par exemple faites une sortie du message pour 
+l’utilisateur sur le client, et faite une impression du côté serveur.</li>
+<li>Spécifiez les principes architecturaux de votre application et de 
+votre protocole de communication. Comme cela se passe par sockets c’est à
+ vous de tout définir pour votre système distribué qui implante une 
+fonctionnalité de chat. Les utilisateurs doivent pouvoir se joindre 
+dynamiquement à une conversation. Que se passe t il si on envoie un 
+message à une personne qui n’est pas en ligne ? Vous devez prévoir les 
+multiples use-cases que vous allez implanter.<br>
+</li>
+<li>Décrire ensuite les détails d’implantation du système de chat en utilisant des sockets.</li>
+<li>Construisez l’application.</li>
+<li>Ajoutez une fonctionnalité d’historique: quand un nouvel utilisateur
+ rejoins le système, cet utilisateur reçoit en premier les messages qui 
+ont été échangé quand il n’était pas en ligne. Votre première version 
+sera éphémère, c’est à dire que quand le système s’arrête l’historique 
+des messages échangés disparaît.</li>
+<li>Implantez une version persistante des messages échangés. C’est à 
+dire que quand le serveur s’arrête puis redémarre cette histoire est 
+restaurée.</li>
+<li>Implantez une version où il est possible de faire des groupes de discussion.</li>
+<li>Etendez votre messagerie en ajoutant des fonctionnalités au gré de votre créativité.</li>
+</ol>
+<h2 id="environnement-de-programmation">Environnement de programmation</h2>
+<p>Le programme sera fait en C. Pensez à répartir vos fonctions dans 
+différents fichiers et à produire un Makefile pour la compilation. 
+Pensez bien aux structures de données que vous allez utiliser. Vous 
+pouvez partir des exemples vus dans les TP précédents ou bien en cours.</p>
+</body></html>
