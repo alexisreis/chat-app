@@ -1,10 +1,10 @@
 CC=gcc
 BIN=./bin
 
-all : client server
+all : Client Server
 
-client: ./Client/Client.c
-	$(CC) -o $(BIN)/$@ $<
+Client: ./Client/Client.c
+	$(CC) -o $(BIN)/$@ $< -lssl -lcrypto
 
-server: ./Server/Server.c
-	$(CC) -o $(BIN)/$@ $<
+Server: ./Server/Server.c
+	$(CC) -o $(BIN)/$@ $< -lssl -lcrypto
