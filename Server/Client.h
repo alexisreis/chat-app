@@ -9,7 +9,6 @@
 #define DISCONNECTED 0
 
 #include <stdio.h>
-#include <openssl/sha.h>
 #include "Server.h"
 
 struct groupConv;
@@ -19,7 +18,6 @@ struct Client
 {
    SOCKET sock;
    char name[BUF_SIZE];
-   char password[BUF_SIZE];
 
    int status;
 
