@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <openssl/sha.h>
 
 #include "Server.h"
 #include "Client.h"
@@ -101,7 +102,7 @@ static void end(void)
  * @param name client name
  * @return Client*
  */
-Client *newClient(int csock, char *name, int status)
+Client *newClient(int csock, char *name, char *password, int status)
 {
    Client *c;
    c = (Client *)malloc(sizeof(Client));
@@ -115,13 +116,15 @@ Client *newClient(int csock, char *name, int status)
    c->actualConv = NULL;
 
    strncpy(c->name, name, BUF_SIZE - 1);
+   strncpy(c->password, password, BUF_SIZE - 1);
+
 
    return c;
 }
 
-void add_client(Client **clients, int csock, char *name, int status)
+void add_client(Client **clients, int csock, char *name, char* password, int status)
 {
-   Client *c = newClient(csock, name, status);
+   Client *c = newClient(csock, name, password, status);
    clients[actual] = c;
    actual++;
 }
@@ -131,13 +134,15 @@ void load_clients(Client **clients)
    printf("Loading clients...\n");
    FILE *file = fopen("history/clients.txt", "r");
 
-   char file_contents[BUF_SIZE];
+   char pseudo[BUF_SIZE];
+   char password[BUF_SIZE];
 
    if (file)
    {
-      while (fscanf(file, "%s\n", file_contents) != EOF)
+      while (fscanf(file, "%99[^\n]\n", pseudo) != EOF)
       {
-         add_client(clients, NULL, file_contents, DISCONNECTED);
+         fscanf(file, "%99[^\n]\n", password);
+         add_client(clients, NULL, pseudo, password, DISCONNECTED);
       }
       fclose(file);
       printf("Clients loaded\n");
@@ -308,6 +313,8 @@ static void app(void)
 {
    SOCKET sock = init_connection();
    char buffer[BUF_SIZE];
+   char name[BUF_SIZE];
+   char password[BUF_SIZE];
    /* the index for the array */
 
    int max = sock;
@@ -364,7 +371,7 @@ static void app(void)
          }
 
          /* after connecting the client sends its name */
-         if (read_client(csock, buffer) == -1)
+         if (read_client(csock, name) == -1)
          {
             /* disconnected */
             continue;
@@ -380,7 +387,7 @@ static void app(void)
          for (int i = 0; i < actual; ++i)
          {
             /* Vérification des pseudos */
-            if (strcmp(clients[i]->name, buffer) == 0)
+            if (strcmp(clients[i]->name, name) == 0)
             {
                /* Vérification si le client est déja connecté */
                if (clients[i]->status == CONNECTED)
@@ -391,12 +398,12 @@ static void app(void)
                      strncpy(buffer, "[ERR] Pseudo is already connected to server\n", BUF_SIZE - 1);
                      strcat(buffer, "Enter another pseudo : ");
                      write_client(csock, buffer);
-                     read_client(csock, buffer);
+                     read_client(csock, name);
 
                      for (int k = 0; k < actual; ++k)
                      {
                         free_pseudo = 1;
-                        if (strcmp(clients[k]->name, buffer) == 0)
+                        if (strcmp(clients[k]->name, name) == 0 && clients[k] -> status == CONNECTED)
                         {
                            free_pseudo = 0;
                            break;
@@ -406,10 +413,25 @@ static void app(void)
                }
                else
                {
+                  /* The user exists and is not already connected */
+                  /* Ask for password */
+                  strcpy(buffer, "Enter password : ");
+                  write_client(csock, buffer);
+                  read_client(csock, password);
+
+                  /* While password is wrong */
+                  while (strcmp(clients[i]->password, password))
+                  {
+                     strcpy(buffer, "Enter password : ");
+                     write_client(csock, buffer);
+                     read_client(csock, password);
+                  }
+
                   clients[i]->sock = csock;
                   clients[i]->status = CONNECTED;
                   c = clients[i];
                   printf("* [CON] %s reconnected to server\n", c->name);
+               
                }
                break;
             }
@@ -417,15 +439,29 @@ static void app(void)
 
          if (c == NULL)
          {
+            /* The user does not exists and needs an account */
+
+            /* Ask for password */
+            strcpy(buffer, "Enter password : ");
+            write_client(csock, buffer);
+            read_client(csock, password);
+
+            
             /* Sinon on en crée un nouveau */
 
-            c = newClient(csock, buffer, CONNECTED);
+            c = newClient(csock, name, password, CONNECTED);
             clients[actual] = c;
             actual++;
 
+
             FILE *file = fopen("history/clients.txt", "a");
-            fprintf(file, "%s\n", c->name);
-            fclose(file);
+            if(file)
+            {
+               fprintf(file, "%s\n", c->name);
+               fprintf(file, "%s\n", c->password);               
+               fclose(file);
+            }
+
 
             printf("* [NEW] %s connected to server\n", c->name);
          }

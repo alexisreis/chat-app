@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <openssl/sha.h>
 
 #include "Client.h"
 
@@ -32,8 +33,39 @@ static void app(const char *address, const char *name)
 
    fd_set rdfs;
 
-   /* send our name */
+   
+
+   /* send our name and password to the server */
    write_server(sock, name);
+
+   int connected = 0;
+   while(!connected)
+   {
+      read_server(sock, buffer);
+      printf("%s", buffer);
+
+      if(!strcmp(buffer, "[ERR] Pseudo is already connected to server\nEnter another pseudo : "))
+      {
+         scanf("%99s", buffer);
+         write_server(sock, name);
+      } 
+      else if (!strcmp(buffer, "Enter password : "))
+      {
+         scanf("%99s[^\n]\n", buffer);
+         
+         /* hash the password with SHA256 */
+         SHA256_CTX context;
+         unsigned char hashed_password[SHA256_DIGEST_LENGTH];
+         SHA256_Init(&context);
+         SHA256_Update(&context, (unsigned char*)buffer, strlen(buffer));
+         SHA256_Final(hashed_password, &context);
+
+         write_server(sock, hashed_password);
+      } else if (!strcmp(buffer, "Bienvenue ! Pour obtenir la liste des commandes disponibles, tapez $help !\n")) {
+         connected = 1; 
+      }
+   }
+
 
    while(1)
    {
@@ -73,6 +105,7 @@ static void app(const char *address, const char *name)
       else if(FD_ISSET(sock, &rdfs))
       {
          int n = read_server(sock, buffer);
+
          /* server down */
          if(n == 0)
          {

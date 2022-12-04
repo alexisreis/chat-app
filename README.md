@@ -26,6 +26,8 @@ Afin de se connecter au serveur et utiliser le chat, il suffit de lancer la comm
 
 `[PSEUDO_DU_CLIENT]` est le pseudo avec lequel le client souhaite se connecter au serveur pour communiquer avec d'autres utilisateurs
 
+Si le client existe déjà, il doit s'ensuite s'authentifier avec son mot de passe. Si le client n'existe pas il renseigne le mot de passe qu'il souhaite utiliser. Ces mots de passe sont stockés et envoyés hashés. 
+
 > 🚧 Attention
 > 
 > Le pseudo de l'utilisateur est **unique**. A la reconnexion au serveur si le client souhaite récupérer ses données il ldoit se connecter avec le même pseudo où un nouveau client sera créé. De même il et impossible que deux clients se connecte avec le même pseudo simultanément. 
@@ -61,12 +63,15 @@ Ces fichiers sont stockés dans le repertoire `history/`
 
 ```
 Alexis
+mot_de_passe_hashé_de_Alexis
 Simon
+mot_de_passe_hashé_de_Simon
 
 
 ```
 
 ### Structure de la sauvegarde des amis
+L'amitié est réciproque mais n'est représentée qu'une seule fois. Mais les deux relations sont bien créés.
 `history/friends.txt` :
 
 ```
@@ -98,6 +103,5 @@ Simon
 
 # Idées d'amélioration
 * **chiffrer** les messages à l'envoi, les **déchiffrer** à la réception
-* ajouter l'authentification de l'utilisateur par **mot de passe hashé**
-* envoyer des notifications lros de la recpetion d'un message (privé ou groupe)
+* envoyer des notifications lors de la recpetion d'un message (privé ou groupe)
 * envoyer toutes les notifications de messages reçus lors que l'utilisateur était hors-ligne
