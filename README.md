@@ -99,5 +99,5 @@ Simon
 # Idées d'amélioration
 * **chiffrer** les messages à l'envoi, les **déchiffrer** à la réception
 * ajouter l'authentification de l'utilisateur par **mot de passe hashé**
-* envoyer des notifications lros de la recpetion d'un message (privé ou groupe)
+* envoyer des notifications lros de la réception d'un message (privé ou groupe)
 * envoyer toutes les notifications de messages reçus lors que l'utilisateur était hors-ligne
